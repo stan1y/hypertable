@@ -80,7 +80,7 @@ _install_log4cpp() {
 _install_libunwind() {
   get http://download.savannah.gnu.org/releases/libunwind/libunwind-0.99-beta.tar.gz libunwind.tgz
   tar zxf libunwind.tgz
-  (cd libunwind-0.99-beta && bash configure && make && make install)
+  (cd libunwind-0.99-beta && CFLAGS=-U_FORTIFY_SOURCE bash configure && make && make install)
 }
 
 _install_tcmalloc() {
@@ -268,7 +268,7 @@ deb_setup_repos() {
 deb_install_dev_env() {
   apt-get install -y g++ make git-core libevent-dev zlib1g-dev libbz2-dev \
       libexpat1-dev libncurses-dev libreadline5-dev bison flex pkg-config \
-      subversion xfslibs-dev libssl-dev rpm
+      subversion xfslibs-dev libssl-dev rpm libart-2.0-dev
   apt-get -y install liblog4cpp5-dev && set_installed log4cpp
   apt-get -y --force-yes install libceph-dev && set_installed ceph
 
@@ -290,7 +290,7 @@ deb_install_dev_env() {
 
   if [ "$SETUP_DEV_ENV" ]; then
     apt-get install -y ant php5 php5-cli ruby ruby-dev libhttp-access2-ruby \
-        libbit-vector-perl graphviz doxygen sun-java6-jdk libtool automake
+        libbit-vector-perl graphviz doxygen sun-java6-jdk libtool automake 
   fi
 
   install_dev_env_from_src
