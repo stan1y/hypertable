@@ -78,6 +78,7 @@ try_run(RRD_CHECK SHOULD_COMPILE
 string(REGEX REPLACE ".*\n([0-9.]+).*" "\\1" RRD_VERSION ${RRD_TRY_OUT})
 string(REGEX REPLACE ".*\n(RRDtool .*)" "\\1" RRD_VERSION ${RRD_VERSION})
 message(STATUS "RRDtool version: ${RRD_VERSION}")
+message(STATUS "RRDtool libraries: ${RRD_LIBRARIES}")
 
 if (NOT RRD_CHECK STREQUAL "0")
   message(FATAL_ERROR "Please fix the RRDtool installation, "
@@ -95,6 +96,9 @@ if (NOT RRD_COMPATIBLE)
           "Found version ${MAJOR}.${MINOR}.${PATCH}"
           "Please fix the installation, remove CMakeCache.txt and try again.")
 endif()
+
+set(RRD_FOUND "YES")
+set(RRD_LIBRARIES ${RRD_LIBRARY} ${FREETYPE_LIBRARY} ${PNG12_LIBRARY} ${ART_LGPL_2_LIBRARY})
 
 mark_as_advanced(
   RRD_LIBRARIES
