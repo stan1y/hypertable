@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 2.6)
 add_library(ht HypertableBindings.cc)
 
 include_directories(${PYTHON_INCLUDE_PATH} ${Boost_INCLUDE_DIRS})
