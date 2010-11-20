@@ -2,7 +2,7 @@
 from setuptools import setup, Extension
 
 setup(name = "ht",
-        version = "0.9.3.4.cyclozzo1",
+        version = "0.9.3.4",
         description = "Hypertable Binding",
         author = "Sreejith K",
         author_email = "srejit@k7computing.com",
