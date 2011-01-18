@@ -1,19 +1,14 @@
 #!/usr/bin/env bash
 # show a version string of the repo
 vstr=`git describe 2> /dev/null`
-
+vgit=`git rev-parse --short HEAD`
 if [ "$1" == "--commit-only" ] ; then
-  case "$vstr" in
-  v[0-9]*)
-    vstr=`echo $vstr | cut -f3 -d- | cut -b2-`
-    ;;
-  *) vstr="tarball"
-  esac
+  vstr="$vgit"
 else
   case "$vstr" in
   v[0-9]*)
     git update-index -q --refresh 2> /dev/null
-    test -z "`git diff-index --name-only HEAD -- 2>&1`" || vstr="$vstr-dirty"
+    test -z "`git diff-index --name-only HEAD -- 2>&1`" || vstr="$vstr.git.$vgit"
     ;;
   *) vstr="tarball"
   esac
