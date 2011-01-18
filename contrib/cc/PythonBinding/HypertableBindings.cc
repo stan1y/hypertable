@@ -21,22 +21,26 @@ public:
 	{
 	}
 	
-	void create_namespace(const string& name, bool create_intermediate)
+	void create_namespace(const string& name, bool create_intermediate = true)
 	{
 		Client::create_namespace(name, NULL, create_intermediate);
 	}
-
-/*
-	boost::python::list get_tables()
+	
+	NamespacePtr open_namespace(const string& name)
 	{
-		vector<string> tables;
-		Client::get_tables(tables);
-
-		boost::python::list t;
-		BOOST_FOREACH(const string& name, tables ) { t.append(name); }
-		return t;
+		return Client::open_namespace(name, NULL);
 	}
-*/
+	
+	bool exists_namespace(const string& name)
+	{
+		return Client::exists_namespace(name, NULL);
+	}
+	
+	void drop_namespace(const string& name)
+	{
+		Client::drop_namespace(name, NULL);
+	}
+
 	object hql(const string& str)
 	{
 		struct : HqlInterpreter::Callback
@@ -148,37 +152,52 @@ BOOST_PYTHON_FUNCTION_OVERLOADS(create_mutator_overloads, create_mutator, 1, 4)
  * Namespace object methods 
  */
 
-void namespace_create_table(NamespacePtr n, string& name, string& schema)
+void namespace_create_table(NamespacePtr n, const string& name, const string& schema)
 {
 	n->create_table(name, schema);
 }
 
-TablePtr namespace_open_table(NamespacePtr n, string& name)
+void namespace_drop_table(NamespacePtr n, const string& name)
+{
+	n->drop_table(name, true);
+}
+
+TablePtr namespace_open_table(NamespacePtr n, const string& name)
 {
 	return n->open_table(name);
 }
 
-bool namespace_exists_table(NamespacePtr n, string& name)
+bool namespace_exists_table(NamespacePtr n, const string& name)
 {
 	return n->exists_table(name);
 }
 
-void namespace_refresh_table(NamespacePtr n, string& name)
+void namespace_refresh_table(NamespacePtr n, const string& name)
 {
 	return n->refresh_table(name);
 }
 
-string namespace_get_table_id(NamespacePtr n, string& name)
+string namespace_get_table_id(NamespacePtr n, const string& name)
 {
 	return n->get_table_id(name);
 }
 
-void namespace_rename_table(NamespacePtr n, string& old_name, string& new_name)
+string namespace_get_name(NamespacePtr n)
+{
+	return n->get_name();
+}
+
+string namespace_get_id(NamespacePtr n)
+{
+	return n->get_id();
+}
+
+void namespace_rename_table(NamespacePtr n, const string& old_name, const string& new_name)
 {
 	n->rename_table(old_name, new_name);
 }
 
-boost::python::list get_tables(NamespacePtr n)
+boost::python::list namespace_get_tables(NamespacePtr n)
 {
 	vector<NamespaceListing> list;
 	n->get_listing(list);
@@ -192,7 +211,7 @@ boost::python::list get_tables(NamespacePtr n)
 	return tables;
 }
 
-boost::python::list get_namespaces(NamespacePtr n)
+boost::python::list namespace_get_namespaces(NamespacePtr n)
 {
 	vector<NamespaceListing> list;
 	n->get_listing(list);
@@ -219,8 +238,16 @@ BOOST_PYTHON_MODULE(ht)
 	;
 	
   class_<NamespacePtr>("Namespace", "Namespace representation", no_init)
+	.def("get_name",			namespace_get_name)
+	.def("get_id",				namespace_get_id)
 	.def("create_table", 		namespace_create_table)
 	.def("open_table",			namespace_open_table)
+	.def("drop_table",			namespace_drop_table)
+	.def("refresh_table",		namespace_refresh_table)
+	.def("get_table_id",		namespace_get_table_id)
+	.def("rename_table",		namespace_rename_table)
+	.def("get_tables",			namespace_get_tables)
+	.def("get_namespaces",		namespace_get_namespaces)
 	;
 
   class_<TablePtr>("Table", "Table representation", no_init)
