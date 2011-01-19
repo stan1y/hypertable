@@ -25,7 +25,7 @@ schema = '''
 '''
 
 def test():
-	client = ht.Client("/opt/hypertable/0.9.4.3.d48b0f4/conf/hypertable.cfg")
+	client = ht.Client("/opt/hypertable/0.9.4.3/conf/hypertable.cfg")
 	
 	rootns = client.open_namespace('/')
 	ns_list = rootns.get_namespaces()
