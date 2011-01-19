@@ -3,7 +3,7 @@
 from setuptools import setup, Extension
 
 setup(name = "ht",
-        version = "0.9.4.3.cyclozzo1",
+        version = "0.9.4.3",
         description = "Hypertable 0.9.4 Python Binding",
         author = "Stanislav Yudin",
         author_email = "stanislav.yudin@k7cloud.com",
@@ -11,8 +11,8 @@ setup(name = "ht",
         ext_modules=[
         Extension(  "ht",
                     ["HypertableBindings.cc"],
-                    include_dirs         =["/opt/hypertable/0.9.4.3.d48b0f4/include"],
-                    library_dirs         =["/opt/hypertable/0.9.4.3.d48b0f4/lib"],
+                    include_dirs         =["../../../src/cc"],
+                    library_dirs         =["../../../lib", "../../../src/cc/Hypertable/Lib"],
                     libraries            =["boost_python", "Hypertable"],
                     define_macros        =[],
                     extra_compile_args   =["-Wno-deprecated", ],
