@@ -83,7 +83,7 @@ include(CommonUtil)
 include(VersionHelper)
 
 # Verison install directory
-set(CMAKE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/${VERSION})
+set(CMAKE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}.${VERSION_PATCH})
 set(INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
 
 find_package(Threads REQUIRED)
