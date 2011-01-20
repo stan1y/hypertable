@@ -248,6 +248,7 @@ BOOST_PYTHON_MODULE(ht)
 	.def("rename_table",		namespace_rename_table)
 	.def("get_tables",			namespace_get_tables)
 	.def("get_namespaces",		namespace_get_namespaces)
+	.def("exists_table",		namespace_exists_table)
 	;
 
   class_<TablePtr>("Table", "Table representation", no_init)
