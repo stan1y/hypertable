@@ -3,7 +3,7 @@
 vstr=`git describe 2> /dev/null`
 vgit=`git rev-parse --short HEAD`
 if [ "$1" == "--commit-only" ] ; then
-  vstr="$vgit"
+  vstr="r$CYCLOZZO_REVISION.git~$vgit"
 else
   case "$vstr" in
   v[0-9]*)
