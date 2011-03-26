@@ -21,7 +21,7 @@
 namespace cpp   Hypertable.ThriftGen
 namespace java  org.hypertable.thriftgen
 namespace perl  Hypertable.ThriftGen
-namespace php   Hypertable_ThriftGen
+#namespace php   Hypertable_ThriftGen
 # python doesn't like multiple top dirs with the same name (say hypertable)
 namespace py    hyperthrift.gen
 namespace rb    Hypertable.ThriftGen
