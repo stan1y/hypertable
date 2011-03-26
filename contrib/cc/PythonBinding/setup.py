@@ -15,7 +15,7 @@ setup(name = "ht",
                     library_dirs         =["../../../lib", "../../../src/cc/Hypertable/Lib"],
                     libraries            =["boost_python", "Hypertable"],
                     define_macros        =[],
-                    extra_compile_args   =["-Wno-deprecated", ],
+                    extra_compile_args   =["-O2", "-Wno-deprecated", ],
                     extra_link_args      =[],
                     depends              =[],
                 ), ]
