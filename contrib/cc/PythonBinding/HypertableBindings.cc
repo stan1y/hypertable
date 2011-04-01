@@ -256,7 +256,7 @@ BOOST_PYTHON_MODULE(ht)
 	.def("create_mutator",		create_mutator, create_mutator_overloads())
 	;
 
-  class_<TableMutatorPtr>("TableMutator", "Table Mutator class", no_init)
+  class_<TableMutatorPtr>("TableMutator", "Table Mutator class used to apply changes", no_init)
 	.def("set",					mutator_set)
 	.def("set_delete",			mutator_set_delete)
 	.def("get_resend_count",	mutator_get_resend_count)
@@ -264,12 +264,12 @@ BOOST_PYTHON_MODULE(ht)
 	.def("flush",				mutator_flush)
 	;
 
-  class_<TableScannerPtr>("TableScanner", no_init)
+  class_<TableScannerPtr>("TableScanner", "Table Scanner class used to scan tables for data", no_init)
 	.def("next",				scanner_next)
 	.def("__iter__",			objects::identity_function())
 	;
 
-  class_<ScanSpecBuilder, boost::noncopyable>("ScanSpecBuilder", "scan spec docstring")
+  class_<ScanSpecBuilder, boost::noncopyable>("ScanSpecBuilder", "ScanSpecBuilder used to construct table scanner specifications")
 	.def("clear",				&ScanSpecBuilder::clear)
 	.def("set_row_limit",		&ScanSpecBuilder::set_row_limit)
 	.def("set_max_versions",	&ScanSpecBuilder::set_max_versions)
@@ -283,6 +283,8 @@ BOOST_PYTHON_MODULE(ht)
 	.def("set_end_time",		&ScanSpecBuilder::set_end_time)
 	.def("set_keys_only",		&ScanSpecBuilder::set_keys_only)
 	.def("set_return_deletes",	&ScanSpecBuilder::set_return_deletes)
+	.def("set_row_regexp",		&ScanSpecBuilder::set_row_regexp)
+	.def("set_value_regexp",	&ScanSpecBuilder::set_value_regexp)
 	;
 
   class_<PyCell>("Cell", no_init)
