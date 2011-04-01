@@ -79,6 +79,7 @@ namespace Hypertable {
       COMMAND_FETCH_SCANBLOCK,
       COMMAND_LOAD_RANGE,
       COMMAND_SHUTDOWN,
+      COMMAND_SHUTDOWN_MASTER,
       COMMAND_UPDATE,
       COMMAND_REPLAY_BEGIN,
       COMMAND_REPLAY_LOAD_RANGE,
@@ -93,6 +94,7 @@ namespace Hypertable {
       COMMAND_CREATE_NAMESPACE,
       COMMAND_DROP_NAMESPACE,
       COMMAND_RENAME_TABLE,
+      COMMAND_WAIT_FOR_MAINTENANCE,
       COMMAND_MAX
     };
 
@@ -1337,6 +1339,14 @@ namespace Hypertable {
       ParserState &state;
     };
 
+    struct scan_set_scan_and_filter_rows {
+      scan_set_scan_and_filter_rows(ParserState &state) : state(state) { }
+      void operator()(char const *str, char const *end) const {
+        state.scan.builder.set_scan_and_filter_rows(true);
+      }
+      ParserState &state;
+    };
+
     struct set_noescape {
       set_noescape(ParserState &state) : state(state) { }
       void operator()(char const *str, char const *end) const {
@@ -1489,7 +1499,8 @@ namespace Hypertable {
             "from", "FROM", "From", "start_time", "START_TIME", "Start_Time",
             "Start_time", "end_time", "END_TIME", "End_Time", "End_time",
             "into", "INTO", "Into", "table", "TABLE", "Table", "NAMESPACE", "Namespace",
-            "cells", "CELLS", "value", "VALUE", "regexp", "REGEXP";
+            "cells", "CELLS", "value", "VALUE", "regexp", "REGEXP", "wait", "WAIT"
+            "for", "FOR", "maintenance", "MAINTENANCE";
 
           /**
            * OPERATORS
@@ -1533,6 +1544,7 @@ namespace Hypertable {
           Token USE          = as_lower_d["use"];
           Token RENAME       = as_lower_d["rename"];
           Token COLUMN       = as_lower_d["column"];
+          Token COLUMNS      = as_lower_d["columns"];
           Token FAMILY       = as_lower_d["family"];
           Token ALTER        = as_lower_d["alter"];
           Token HELP         = as_lower_d["help"];
@@ -1609,6 +1621,7 @@ namespace Hypertable {
           Token EXISTS       = as_lower_d["exists"];
           Token DISPLAY_TIMESTAMPS = as_lower_d["display_timestamps"];
           Token RETURN_DELETES = as_lower_d["return_deletes"];
+          Token SCAN_AND_FILTER_ROWS = as_lower_d["scan_and_filter_rows"];
           Token KEYS_ONLY    = as_lower_d["keys_only"];
           Token RANGE        = as_lower_d["range"];
           Token UPDATE       = as_lower_d["update"];
@@ -1619,6 +1632,7 @@ namespace Hypertable {
           Token SCANBLOCK    = as_lower_d["scanblock"];
           Token CLOSE        = as_lower_d["close"];
           Token SHUTDOWN     = as_lower_d["shutdown"];
+          Token MASTER       = as_lower_d["master"];
           Token REPLAY       = as_lower_d["replay"];
           Token START        = as_lower_d["start"];
           Token COMMIT       = as_lower_d["commit"];
@@ -1639,6 +1653,9 @@ namespace Hypertable {
           Token SINGLE_CELL_FORMAT = as_lower_d["single_cell_format"];
           Token BUCKETS      = as_lower_d["buckets"];
           Token REPLICATION  = as_lower_d["replication"];
+          Token WAIT         = as_lower_d["wait"];
+          Token FOR          = as_lower_d["for"];
+          Token MAINTENANCE  = as_lower_d["maintenance"];
 
           /**
            * Start grammar definition
@@ -1671,7 +1688,6 @@ namespace Hypertable {
 
           statement
             = select_statement[set_command(self.state, COMMAND_SELECT)]
-            | select_cells_statement[set_command(self.state, COMMAND_SELECT)]
             | use_namespace_statement[set_command(self.state,
                 COMMAND_USE_NAMESPACE)]
             | create_namespace_statement[set_command(self.state,
@@ -1704,6 +1720,7 @@ namespace Hypertable {
                 COMMAND_FETCH_SCANBLOCK)]
             | close_statement[set_command(self.state, COMMAND_CLOSE)]
             | shutdown_statement[set_command(self.state, COMMAND_SHUTDOWN)]
+            | shutdown_master_statement[set_command(self.state, COMMAND_SHUTDOWN_MASTER)]
             | drop_range_statement[set_command(self.state, COMMAND_DROP_RANGE)]
             | replay_start_statement[set_command(self.state,
                 COMMAND_REPLAY_BEGIN)]
@@ -1711,6 +1728,7 @@ namespace Hypertable {
             | replay_commit_statement[set_command(self.state,
                 COMMAND_REPLAY_COMMIT)]
             | exists_table_statement[set_command(self.state, COMMAND_EXISTS_TABLE)]
+            | wait_for_maintenance_statement[set_command(self.state, COMMAND_WAIT_FOR_MAINTENANCE)]
             ;
 
           drop_range_statement
@@ -1733,8 +1751,16 @@ namespace Hypertable {
             = CLOSE
             ;
 
+          wait_for_maintenance_statement
+            = WAIT >> FOR >> MAINTENANCE
+            ;
+
           shutdown_statement
             = SHUTDOWN
+            ;
+
+          shutdown_master_statement
+            = SHUTDOWN >> MASTER
             ;
 
           fetch_scanblock_statement
@@ -1775,9 +1801,10 @@ namespace Hypertable {
             ;
 
           dump_table_statement
-	    = DUMP >> TABLE >> user_identifier[set_table_name(self.state)]
-		   >> !(WHERE >> time_predicate)
-		   >> *(dump_table_option_spec)
+	          = DUMP >> TABLE >> user_identifier[set_table_name(self.state)]
+            >> !(COLUMNS >> ('*' | (column_predicate >> *(COMMA >> column_predicate))))
+		        >> !(dump_where_clause)
+		        >> *(dump_table_option_spec)
             ;
 
           range_spec
@@ -1870,8 +1897,8 @@ namespace Hypertable {
           create_table_statement
             = CREATE >> TABLE
               >> user_identifier[set_table_name(self.state)]
-              >> *(LIKE >> user_identifier[set_clone_table_name(self.state)])
-              >> !(create_definitions)
+              >> ((LIKE >> user_identifier[set_clone_table_name(self.state)])
+                  | (create_definitions))
               >> *(table_option)
             ;
 
@@ -2025,18 +2052,10 @@ namespace Hypertable {
             ;
 
           select_statement
-            = SELECT
+            = SELECT >> !(CELLS)
               >> ('*' | (column_predicate >> *(COMMA >> column_predicate)))
               >> FROM >> user_identifier[set_table_name(self.state)]
               >> !where_clause
-              >> *(option_spec)
-            ;
-
-          select_cells_statement
-            = SELECT >> CELLS
-              >> ('*' | (column_predicate >> *(COMMA >> column_predicate)))
-              >> FROM >> user_identifier[set_table_name(self.state)]
-              >> !where_cells_clause
               >> *(option_spec)
             ;
 
@@ -2052,8 +2071,8 @@ namespace Hypertable {
             = WHERE >> where_predicate >> *(AND >> where_predicate)
             ;
 
-          where_cells_clause
-            = WHERE >> where_cells_predicate >> *(AND >> where_cells_predicate)
+          dump_where_clause
+            = WHERE >> dump_where_predicate >> *(AND >> dump_where_predicate)
             ;
 
           relop
@@ -2104,11 +2123,11 @@ namespace Hypertable {
             = cell_predicate
             | row_predicate
             | time_predicate
+            | value_predicate
             ;
 
-          where_cells_predicate
-            = cell_predicate
-            | row_predicate
+          dump_where_predicate
+            = ROW >> REGEXP >> string_literal[scan_set_row_regexp(self.state)]
             | time_predicate
             | value_predicate
             ;
@@ -2126,6 +2145,7 @@ namespace Hypertable {
             | KEYS_ONLY[scan_set_keys_only(self.state)]
             | NOESCAPE[set_noescape(self.state)]
             | NO_ESCAPE[set_noescape(self.state)]
+            | SCAN_AND_FILTER_ROWS[scan_set_scan_and_filter_rows(self.state)]
             ;
 
           date_expression
@@ -2239,11 +2259,8 @@ namespace Hypertable {
           BOOST_SPIRIT_DEBUG_RULE(describe_table_statement);
           BOOST_SPIRIT_DEBUG_RULE(show_statement);
           BOOST_SPIRIT_DEBUG_RULE(select_statement);
-          BOOST_SPIRIT_DEBUG_RULE(select_cells_statement);
           BOOST_SPIRIT_DEBUG_RULE(where_clause);
-          BOOST_SPIRIT_DEBUG_RULE(where_cells_clause);
           BOOST_SPIRIT_DEBUG_RULE(where_predicate);
-          BOOST_SPIRIT_DEBUG_RULE(where_cells_predicate);
           BOOST_SPIRIT_DEBUG_RULE(time_predicate);
           BOOST_SPIRIT_DEBUG_RULE(cell_interval);
           BOOST_SPIRIT_DEBUG_RULE(cell_predicate);
@@ -2277,6 +2294,8 @@ namespace Hypertable {
           BOOST_SPIRIT_DEBUG_RULE(exists_table_statement);
           BOOST_SPIRIT_DEBUG_RULE(load_range_statement);
           BOOST_SPIRIT_DEBUG_RULE(dump_statement);
+          BOOST_SPIRIT_DEBUG_RULE(dump_where_clause);
+          BOOST_SPIRIT_DEBUG_RULE(dump_where_predicate);
           BOOST_SPIRIT_DEBUG_RULE(dump_table_option_spec);
           BOOST_SPIRIT_DEBUG_RULE(dump_table_statement);
           BOOST_SPIRIT_DEBUG_RULE(range_spec);
@@ -2286,6 +2305,7 @@ namespace Hypertable {
           BOOST_SPIRIT_DEBUG_RULE(fetch_scanblock_statement);
           BOOST_SPIRIT_DEBUG_RULE(close_statement);
           BOOST_SPIRIT_DEBUG_RULE(shutdown_statement);
+          BOOST_SPIRIT_DEBUG_RULE(shutdown_master_statement);
           BOOST_SPIRIT_DEBUG_RULE(drop_range_statement);
           BOOST_SPIRIT_DEBUG_RULE(replay_start_statement);
           BOOST_SPIRIT_DEBUG_RULE(replay_log_statement);
@@ -2309,8 +2329,8 @@ namespace Hypertable {
           ttl_option, counter_option, access_group_definition, access_group_option,
           bloom_filter_option, in_memory_option,
           blocksize_option, replication_option, help_statement,
-          describe_table_statement, show_statement, select_statement, select_cells_statement,
-          where_clause, where_cells_clause, where_predicate, where_cells_predicate,
+          describe_table_statement, show_statement, select_statement,
+          where_clause, where_predicate,
           time_predicate, relop, row_interval, row_predicate, column_predicate,
           value_predicate,
           option_spec, date_expression, datetime, date, time, year,
@@ -2320,13 +2340,14 @@ namespace Hypertable {
           table_option_blocksize, table_option_replication, get_listing_statement,
           drop_table_statement, alter_table_statement,rename_table_statement,
           load_range_statement,
-          dump_statement, dump_table_statement, dump_table_option_spec, range_spec,
+          dump_statement, dump_where_clause, dump_where_predicate,
+          dump_table_statement, dump_table_option_spec, range_spec,
 	        exists_table_statement, update_statement, create_scanner_statement,
           destroy_scanner_statement, fetch_scanblock_statement,
-          close_statement, shutdown_statement, drop_range_statement,
-          replay_start_statement, replay_log_statement,
+          close_statement, shutdown_statement, shutdown_master_statement, 
+          drop_range_statement, replay_start_statement, replay_log_statement,
           replay_commit_statement, cell_interval, cell_predicate,
-          cell_spec;
+          cell_spec, wait_for_maintenance_statement;
       };
 
       ParserState &state;

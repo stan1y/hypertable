@@ -58,7 +58,6 @@ namespace Hypertable {
       return m_prioritizer == &m_prioritizer_low_memory;
     }
 
-    Mutex m_mutex;
     bool m_initialized;
     bool m_scheduling_needed;
     ApplicationQueuePtr m_app_queue;
@@ -71,6 +70,7 @@ namespace Hypertable {
     int32_t m_maintenance_interval;
     boost::xtime m_last_maintenance;
     int64_t m_query_cache_memory;
+    int32_t m_low_memory_limit_percentage;
   };
 
   typedef intrusive_ptr<MaintenanceScheduler> MaintenanceSchedulerPtr;

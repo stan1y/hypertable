@@ -157,7 +157,9 @@ void RangeServerCommandInterpreter::execute_line(const String &line) {
 
       range_state.soft_limit = 200000000LL;
 
-      m_range_server->load_range(m_addr, *table, range, 0, range_state, 0);
+      m_range_server->load_range(m_addr, *table, range, 0, range_state, false);
+
+      m_range_server->acknowledge_load(m_addr, *table, range);
 
     }
     else if (state.command == COMMAND_UPDATE) {
@@ -355,6 +357,9 @@ void RangeServerCommandInterpreter::execute_line(const String &line) {
     }
     else if (state.command == COMMAND_CLOSE) {
       m_range_server->close(m_addr);
+    }
+    else if (state.command == COMMAND_WAIT_FOR_MAINTENANCE) {
+      m_range_server->wait_for_maintenance(m_addr);
     }
     else if (state.command == COMMAND_SHUTDOWN) {
       m_range_server->close(m_addr);

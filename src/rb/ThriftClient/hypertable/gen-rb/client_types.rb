@@ -147,6 +147,9 @@ module Hypertable
         # 
         #   <dt>value_regexp</dt>
         #   <dd>Specifies a regexp used to filter by cell value</dd>
+        # 
+        #   <dt>scan_and_filter_rows</dt>
+        #   <dd>Indicates whether table scan filters the rows specified instead of individual look up</dd>
         # </dl>
         class ScanSpec
           include ::Thrift::Struct, ::Thrift::Struct_Union
@@ -162,6 +165,7 @@ module Hypertable
           CELL_LIMIT = 10
           ROW_REGEXP = 11
           VALUE_REGEXP = 12
+          SCAN_AND_FILTER_ROWS = 13
 
           FIELDS = {
             ROW_INTERVALS => {:type => ::Thrift::Types::LIST, :name => 'row_intervals', :element => {:type => ::Thrift::Types::STRUCT, :class => Hypertable::ThriftGen::RowInterval}, :optional => true},
@@ -175,7 +179,8 @@ module Hypertable
             KEYS_ONLY => {:type => ::Thrift::Types::BOOL, :name => 'keys_only', :default => false, :optional => true},
             CELL_LIMIT => {:type => ::Thrift::Types::I32, :name => 'cell_limit', :default => 0, :optional => true},
             ROW_REGEXP => {:type => ::Thrift::Types::STRING, :name => 'row_regexp', :optional => true},
-            VALUE_REGEXP => {:type => ::Thrift::Types::STRING, :name => 'value_regexp', :optional => true}
+            VALUE_REGEXP => {:type => ::Thrift::Types::STRING, :name => 'value_regexp', :optional => true},
+            SCAN_AND_FILTER_ROWS => {:type => ::Thrift::Types::BOOL, :name => 'scan_and_filter_rows', :default => false, :optional => true}
           }
 
           def struct_fields; FIELDS; end
@@ -295,6 +300,177 @@ module Hypertable
           def struct_fields; FIELDS; end
 
           def validate
+          end
+
+          ::Thrift::Struct.generate_accessors self
+        end
+
+        # Specifies a result object for asynchronous requests.
+        # TODO: add support for update results
+        # 
+        # <dl>
+        #   <dt>is_empty</dt>
+        #   <dd>Indicates whether this object contains a result or not</dd>
+        # 
+        #   <dt>id</dt>
+        #   <dd>Scanner/mutator id for which these results pertain to</dd>
+        #   
+        #   <dt>is_scan</dt>
+        #   <dd>Indicates whether these are scan results or update results</dd>
+        #   
+        #   <dt>is_error</dt>
+        #   <dd>Indicates whether the async request was successful or not</dd>
+        #   
+        #   <dt>error</dt>
+        #   <dd>Error code</dd>
+        # 
+        #   <dt>error_msg</dt>
+        #   <dd>Error message</dd>
+        # 
+        #   <dt>cells</dt>
+        #   <dd>Cells returned by asynchronous scanner</dd>
+        # </dl>
+        class Result
+          include ::Thrift::Struct, ::Thrift::Struct_Union
+          IS_EMPTY = 1
+          ID = 2
+          IS_SCAN = 3
+          IS_ERROR = 4
+          ERROR = 5
+          ERROR_MSG = 6
+          CELLS = 7
+
+          FIELDS = {
+            IS_EMPTY => {:type => ::Thrift::Types::BOOL, :name => 'is_empty'},
+            ID => {:type => ::Thrift::Types::I64, :name => 'id'},
+            IS_SCAN => {:type => ::Thrift::Types::BOOL, :name => 'is_scan'},
+            IS_ERROR => {:type => ::Thrift::Types::BOOL, :name => 'is_error'},
+            ERROR => {:type => ::Thrift::Types::I32, :name => 'error', :optional => true},
+            ERROR_MSG => {:type => ::Thrift::Types::STRING, :name => 'error_msg', :optional => true},
+            CELLS => {:type => ::Thrift::Types::LIST, :name => 'cells', :element => {:type => ::Thrift::Types::STRUCT, :class => Hypertable::ThriftGen::Cell}, :optional => true}
+          }
+
+          def struct_fields; FIELDS; end
+
+          def validate
+            raise ::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, 'Required field is_empty is unset!') if @is_empty.nil?
+            raise ::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, 'Required field id is unset!') unless @id
+            raise ::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, 'Required field is_scan is unset!') if @is_scan.nil?
+            raise ::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, 'Required field is_error is unset!') if @is_error.nil?
+          end
+
+          ::Thrift::Struct.generate_accessors self
+        end
+
+        # Specifies a result object for asynchronous requests.
+        # TODO: add support for update results
+        # 
+        # <dl>
+        #   <dt>is_empty</dt>
+        #   <dd>Indicates whether this object contains a result or not</dd>
+        # 
+        #   <dt>id</dt>
+        #   <dd>Scanner/mutator id for which these results pertain to</dd>
+        #   
+        #   <dt>is_scan</dt>
+        #   <dd>Indicates whether these are scan results or update results</dd>
+        #   
+        #   <dt>is_error</dt>
+        #   <dd>Indicates whether the async request was successful or not</dd>
+        #   
+        #   <dt>error</dt>
+        #   <dd>Error code</dd>
+        # 
+        #   <dt>error_msg</dt>
+        #   <dd>Error message</dd>
+        # 
+        #   <dt>cells</dt>
+        #   <dd>Cells returned by asynchronous scanner</dd>
+        # </dl>
+        class ResultAsArrays
+          include ::Thrift::Struct, ::Thrift::Struct_Union
+          IS_EMPTY = 1
+          ID = 2
+          IS_SCAN = 3
+          IS_ERROR = 4
+          ERROR = 5
+          ERROR_MSG = 6
+          CELLS = 7
+
+          FIELDS = {
+            IS_EMPTY => {:type => ::Thrift::Types::BOOL, :name => 'is_empty'},
+            ID => {:type => ::Thrift::Types::I64, :name => 'id'},
+            IS_SCAN => {:type => ::Thrift::Types::BOOL, :name => 'is_scan'},
+            IS_ERROR => {:type => ::Thrift::Types::BOOL, :name => 'is_error'},
+            ERROR => {:type => ::Thrift::Types::I32, :name => 'error', :optional => true},
+            ERROR_MSG => {:type => ::Thrift::Types::STRING, :name => 'error_msg', :optional => true},
+            CELLS => {:type => ::Thrift::Types::LIST, :name => 'cells', :element => {:type => ::Thrift::Types::LIST, :element => {:type => ::Thrift::Types::STRING}}, :optional => true}
+          }
+
+          def struct_fields; FIELDS; end
+
+          def validate
+            raise ::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, 'Required field is_empty is unset!') if @is_empty.nil?
+            raise ::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, 'Required field id is unset!') unless @id
+            raise ::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, 'Required field is_scan is unset!') if @is_scan.nil?
+            raise ::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, 'Required field is_error is unset!') if @is_error.nil?
+          end
+
+          ::Thrift::Struct.generate_accessors self
+        end
+
+        # Specifies a serialized result object for asynchronous requests.
+        # TODO: add support for update results
+        # 
+        # <dl>
+        #   <dt>is_empty</dt>
+        #   <dd>Indicates whether this object contains a result or not</dd>
+        # 
+        #   <dt>id</dt>
+        #   <dd>Scanner/mutator id for which these results pertain to</dd>
+        #   
+        #   <dt>is_scan</dt>
+        #   <dd>Indicates whether these are scan results or update results</dd>
+        #   
+        #   <dt>is_error</dt>
+        #   <dd>Indicates whether the async request was successful or not</dd>
+        #   
+        #   <dt>error</dt>
+        #   <dd>Error code</dd>
+        # 
+        #   <dt>error_msg</dt>
+        #   <dd>Error message</dd>
+        # 
+        #   <dt>cells</dt>
+        #   <dd>Cells returned by asynchronous scanner</dd>
+        # </dl>
+        class ResultSerialized
+          include ::Thrift::Struct, ::Thrift::Struct_Union
+          IS_EMPTY = 1
+          ID = 2
+          IS_SCAN = 3
+          IS_ERROR = 4
+          ERROR = 5
+          ERROR_MSG = 6
+          CELLS = 7
+
+          FIELDS = {
+            IS_EMPTY => {:type => ::Thrift::Types::BOOL, :name => 'is_empty'},
+            ID => {:type => ::Thrift::Types::I64, :name => 'id'},
+            IS_SCAN => {:type => ::Thrift::Types::BOOL, :name => 'is_scan'},
+            IS_ERROR => {:type => ::Thrift::Types::BOOL, :name => 'is_error'},
+            ERROR => {:type => ::Thrift::Types::I32, :name => 'error', :optional => true},
+            ERROR_MSG => {:type => ::Thrift::Types::STRING, :name => 'error_msg', :optional => true},
+            CELLS => {:type => ::Thrift::Types::STRING, :name => 'cells', :binary => true, :optional => true}
+          }
+
+          def struct_fields; FIELDS; end
+
+          def validate
+            raise ::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, 'Required field is_empty is unset!') if @is_empty.nil?
+            raise ::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, 'Required field id is unset!') unless @id
+            raise ::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, 'Required field is_scan is unset!') if @is_scan.nil?
+            raise ::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, 'Required field is_error is unset!') if @is_error.nil?
           end
 
           ::Thrift::Struct.generate_accessors self

@@ -197,6 +197,17 @@ namespace Hyperspace {
     uint64_t open(const std::string &name, uint32_t flags,
                   HandleCallbackPtr &callback, Timer *timer = 0);
 
+    /** Opens a file.  The open mode is determined by the bits in the
+     * flags argument.  No callback is registered for this handle and
+     * no events are reported on this handle.
+     *
+     * @param name pathname of file to open
+     * @param flags OR'ed together set of open flags (see \ref OpenFlags)
+     * @param timer maximum wait timer
+     * @return opened file handle
+     */
+    uint64_t open(const std::string &name, uint32_t flags, Timer *timer = 0);
+
     /** Creates a file.  This method is basically the same as the #open method
      * except that it implicitly sets the OPEN_FLAG_CREATE and OPEN_FLAG_EXCL
      * open flags and supplies a set of initial attributes to be set when the
@@ -340,10 +351,11 @@ namespace Hyperspace {
      *
      * @param handle handle of directory to scan
      * @param attr attribute name
+     * @param include_sub_entries include or not include all sub entries
      * @param listing reference to vector of DirEntry structures to hold result
      * @param timer maximum wait timer
      */
-    void readdir_attr(uint64_t handle, const std::string &attr,
+    void readdir_attr(uint64_t handle, const std::string &attr, bool include_sub_entries,
                       std::vector<DirEntryAttr> &listing, Timer *timer=0);
 
     /** Gets a listing of the value of a specified atribute for each path components

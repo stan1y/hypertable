@@ -139,9 +139,9 @@ Master::Master(ConnectionManagerPtr &conn_mgr, PropertiesPtr &props,
 
   Path base_dir(props->get_str("Hyperspace.Replica.Dir"));
 
-  if (!base_dir.is_complete()) { 
-    Path data_dir = props->get_str("Hypertable.DataDirectory"); 
-    base_dir = data_dir / base_dir; 
+  if (!base_dir.is_complete()) {
+    Path data_dir = props->get_str("Hypertable.DataDirectory");
+    base_dir = data_dir / base_dir;
   }
 
   m_base_dir = base_dir.directory_string();
@@ -806,7 +806,7 @@ Master::open(ResponseCallbackOpen *cb, uint64_t session_id, const char *name,
     } // node exists in DB already
     else { // node doesn't exist in DB
       if (!(flags & OPEN_FLAG_CREATE)) {
-        error = Error::HYPERSPACE_BAD_PATHNAME;
+        error = Error::HYPERSPACE_FILE_NOT_FOUND;
         error_msg = name;
         aborted = true;
         goto txn_commit;
@@ -1547,7 +1547,7 @@ Master::readdir(ResponseCallbackReaddir *cb, uint64_t session_id,
  */
 void
 Master::readdir_attr(ResponseCallbackReaddirAttr *cb, uint64_t session_id,
-                     uint64_t handle, const char *name) {
+                     uint64_t handle, const char *name, bool include_sub_entries) {
   std::string abs_name;
   SessionDataPtr session_data;
   String node;
@@ -1582,7 +1582,7 @@ Master::readdir_attr(ResponseCallbackReaddirAttr *cb, uint64_t session_id,
     }
 
     m_bdb_fs->get_handle_node(txn, handle, node);
-    m_bdb_fs->get_directory_attr_listing(txn, node, name, listing);
+    m_bdb_fs->get_directory_attr_listing(txn, node, name, include_sub_entries, listing);
 
     txn_commit:
       if (aborted)

@@ -38,7 +38,7 @@
 #include "Hypertable/Lib/Schema.h"
 #include "Hypertable/Lib/SerializedKey.h"
 
-#include "../CellStoreV4.h"
+#include "../CellStoreV5.h"
 #include "../FileBlockCache.h"
 #include "../Global.h"
 
@@ -515,7 +515,7 @@ int main(int argc, char **argv) {
     Global::dfs = new DfsBroker::Client(conn_mgr, addr, 15000);
 
     // force broker client to be destroyed before connection manager
-    client = (DfsBroker::Client *)Global::dfs;
+    client = (DfsBroker::Client *)Global::dfs.get();
 
     if (!client->wait_for_connection(15000)) {
       HT_ERROR("Unable to connect to DFS");
@@ -528,8 +528,7 @@ int main(int argc, char **argv) {
     String testdir = "/CellStoreScanner_delete_test";
     client->mkdirs(testdir);
 
-    SchemaPtr schema = Schema::new_instance(schema_str, strlen(schema_str),
-                                            true);
+    SchemaPtr schema = Schema::new_instance(schema_str, strlen(schema_str));
     if (!schema->is_valid()) {
       HT_ERRORF("Schema Parse Error: %s", schema->get_error_string());
       exit(1);
@@ -539,7 +538,7 @@ int main(int argc, char **argv) {
     PropertiesPtr cs_props = new Properties();
     // make sure blocks are small so only one key value pair fits in a block
     cs_props->set("blocksize", uint32_t(32));
-    cs = new CellStoreV4(Global::dfs, schema.get());
+    cs = new CellStoreV5(Global::dfs.get(), schema.get());
     HT_TRY("creating cellstore", cs->create(csname.c_str(), 24000, cs_props));
 
     DynamicBuffer dbuf(512000);
@@ -555,6 +554,7 @@ int main(int argc, char **argv) {
     uint8_t valuebuf[128];
     uint8_t *uptr;
     ByteString bsvalue;
+    int64_t num_deletes=0;
 
     uptr = valuebuf;
     Serialization::encode_vi32(&uptr,value.length());
@@ -577,6 +577,7 @@ int main(int argc, char **argv) {
                             timestamp);
       timestamp++;
       serkeyv.push_back(serkey);
+      num_deletes++;
 
       // delete column family
       serkey.ptr = dbuf.ptr;
@@ -590,6 +591,7 @@ int main(int argc, char **argv) {
                             timestamp);
       timestamp++;
       serkeyv.push_back(serkey);
+      num_deletes++;
 
       // delete row & column family
       serkey.ptr = dbuf.ptr;
@@ -604,6 +606,7 @@ int main(int argc, char **argv) {
                             timestamp);
       timestamp++;
       serkeyv.push_back(serkey);
+      num_deletes++;
 
       serkey.ptr = dbuf.ptr;
       create_key_and_append(dbuf, FLAG_INSERT, row.c_str(), 1, qualifier.c_str(), timestamp,
@@ -616,6 +619,7 @@ int main(int argc, char **argv) {
                             timestamp);
       timestamp++;
       serkeyv.push_back(serkey);
+      num_deletes++;
 
       serkey.ptr = dbuf.ptr;
       create_key_and_append(dbuf, FLAG_INSERT, row.c_str(), 1, qualifier.c_str(), timestamp,
@@ -627,13 +631,15 @@ int main(int argc, char **argv) {
       create_key_and_append(dbuf, FLAG_DELETE_ROW, row.c_str(), 0, "", timestamp,
                             timestamp);
       timestamp++;
-       serkeyv.push_back(serkey);
+      serkeyv.push_back(serkey);
+      num_deletes++;
 
       serkey.ptr = dbuf.ptr;
       create_key_and_append(dbuf, FLAG_DELETE_COLUMN_FAMILY, row.c_str(), 1, "", timestamp,
                             timestamp);
       timestamp++;
       serkeyv.push_back(serkey);
+      num_deletes++;
 
       // delete none
       serkey.ptr = dbuf.ptr;
@@ -670,6 +676,7 @@ int main(int argc, char **argv) {
                             timestamp);
       timestamp++;
       serkeyv.push_back(serkey);
+      num_deletes++;
 
       while (dbuf.fill() < 280000) {
         serkey.ptr = dbuf.ptr;
@@ -686,6 +693,7 @@ int main(int argc, char **argv) {
                             timestamp);
       timestamp++;
       serkeyv.push_back(serkey);
+      num_deletes++;
     }
 
     sort(serkeyv.begin(), serkeyv.end());
@@ -815,11 +823,23 @@ int main(int argc, char **argv) {
     scanner = cs->create_scanner(scan_ctx);
     display_scan(scanner, out);
 
+    int64_t delete_count = boost::any_cast<int64_t>(cs->get_trailer()->get("delete_count"));
+    out << "trailer.delete_count= " << delete_count << "\n";
+    if (delete_count != num_deletes) {
+      out << "Expected " << num_deletes << " deletes in CellStore, but trailer.delete_count="
+          << delete_count << endl;
+      return 1;
+    }
+
     out << flush;
     String cmd_str = "diff CellStoreScanner_delete_test.output "
                      "CellStoreScanner_delete_test.golden";
     if (system(cmd_str.c_str()) != 0)
       return 1;
+
+    // close cell store
+    scanner = 0;
+    cs = 0;
 
     client->rmdir(testdir);
   }

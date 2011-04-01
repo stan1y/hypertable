@@ -1,6 +1,6 @@
 set :source_machine, "localhost"
 set :install_dir,  "/opt/hypertable"
-set :hypertable_version, "0.9.4.3"
+set :hypertable_version, "0.9.5.0"
 set :default_dfs, "local"
 set :default_config, "/opt/hypertable/#{hypertable_version}/conf/hypertable.cfg"
 set :default_additional_args, ""
@@ -69,7 +69,7 @@ set :config_option, \
     (default=#{install_dir})
  DESC
 task :copy_config, :roles => :localhost do
-  run("rsync #{config} #{install_dir}/#{hypertable_version}/conf/")
+  run("rsync -e \"ssh -o StrictHostKeyChecking=no\" #{config} #{install_dir}/#{hypertable_version}/conf/")
 end
 
  desc <<-DESC
@@ -80,8 +80,8 @@ end
  DESC
 task :rsync, :roles => :install do
   run <<-CMD
-     rsync -av --exclude=log --exclude=run --exclude=demo --exclude=fs --exclude=hyperspace/ #{source_machine}:#{install_dir}/#{hypertable_version} #{install_dir} &&
-     rsync -av --exclude=log --exclude=run --exclude=demo --exclude=fs --exclude=hyperspace/ #{source_machine}:#{install_dir}/#{hypertable_version}/conf/ #{install_dir}/#{hypertable_version}/conf
+     rsync -av -e "ssh -o StrictHostKeyChecking=no" --exclude=log --exclude=run --exclude=demo --exclude=fs --exclude=hyperspace/ #{source_machine}:#{install_dir}/#{hypertable_version} #{install_dir} &&
+     rsync -av -e "ssh -o StrictHostKeyChecking=no" --exclude=log --exclude=run --exclude=demo --exclude=fs --exclude=hyperspace/ #{source_machine}:#{install_dir}/#{hypertable_version}/conf/ #{install_dir}/#{hypertable_version}/conf
   CMD
 end
 
@@ -251,23 +251,31 @@ end
 desc "Stops all servers."
 task :stop do
   transaction do
-    stop_slaves
     stop_master
+    stop_slaves
     stop_hyperspace
+    stop_dfsbrokers
   end
+end
+
+desc "Stops DFS brokers."
+task :stop_dfsbrokers, :roles => [:master, :slave] do
+  run <<-CMD
+  #{install_dir}/current/bin/stop-servers.sh #{additional_args}
+  CMD
 end
 
 desc "Stops slave processes."
 task :stop_slaves, :roles => :slave do
   run <<-CMD
-  #{install_dir}/current/bin/stop-servers.sh --no-hyperspace --no-master #{additional_args}
+  #{install_dir}/current/bin/stop-servers.sh --no-hyperspace --no-master --no-dfsbroker #{additional_args}
   CMD
 end
 
 desc "Stops master processes."
 task :stop_master, :roles => :master do
   run <<-CMD
-  #{install_dir}/current/bin/stop-servers.sh --no-hyperspace --no-rangeserver #{additional_args} &&
+  #{install_dir}/current/bin/stop-servers.sh --no-hyperspace --no-rangeserver --no-dfsbroker #{additional_args} &&
   #{install_dir}/current/bin/stop-monitoring.sh
   CMD
 end

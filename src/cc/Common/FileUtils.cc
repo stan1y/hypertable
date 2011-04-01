@@ -335,6 +335,15 @@ char *FileUtils::file_to_buffer(const String &fname, off_t *lenp) {
   return rbuf;
 }
 
+String FileUtils::file_to_string(const String &fname) {
+  String str;
+  off_t len;
+  char *contents = file_to_buffer(fname, &len);
+  str = (contents == 0) ? "" : contents;
+  delete [] contents;
+  return str;
+}
+
 
 
 bool FileUtils::mkdirs(const String &dirname) {
@@ -402,6 +411,17 @@ bool FileUtils::unlink(const String &fname) {
   if (::unlink(fname.c_str()) == -1) {
     int saved_errno = errno;
     HT_ERRORF("unlink(\"%s\") failed - %s", fname.c_str(), strerror(saved_errno));
+    errno = saved_errno;
+    return false;
+  }
+  return true;
+}
+
+bool FileUtils::rename(const String &oldpath, const String &newpath) {
+  if (::rename(oldpath.c_str(), newpath.c_str()) == -1) {
+    int saved_errno = errno;
+    HT_ERRORF("rename(\"%s\", \"%s\") failed - %s",
+              oldpath.c_str(), newpath.c_str(), strerror(saved_errno));
     errno = saved_errno;
     return false;
   }

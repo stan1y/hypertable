@@ -38,7 +38,8 @@ template <typename IndexT>
 CellStoreScannerIntervalBlockIndex<IndexT>::CellStoreScannerIntervalBlockIndex(CellStore *cellstore,
   IndexT *index, SerializedKey start_key, SerializedKey end_key, ScanContextPtr &scan_ctx) :
   m_cellstore(cellstore), m_index(index), m_start_key(start_key),
-  m_end_key(end_key), m_fd(-1), m_check_for_range_end(false), m_scan_ctx(scan_ctx) {
+  m_end_key(end_key), m_fd(-1), m_check_for_range_end(false),
+  m_scan_ctx(scan_ctx), m_rowset(scan_ctx->rowset) {
 
   memset(&m_block, 0, sizeof(m_block));
   m_file_id = m_cellstore->get_file_id();
@@ -147,7 +148,9 @@ void CellStoreScannerIntervalBlockIndex<IndexT>::forward() {
     m_key_decompressor->load(m_key);
     if (m_key.flag == FLAG_DELETE_ROW
         || m_scan_ctx->family_mask[m_key.column_family_code])
-      break;
+      // forward to next row requested by scan and filter rows
+      if (m_rowset.empty() || strcmp(m_key.row, *m_rowset.begin()) >= 0)
+        break;
   }
 }
 
@@ -173,6 +176,12 @@ bool CellStoreScannerIntervalBlockIndex<IndexT>::fetch_next_block(bool eob) {
     Global::block_cache->checkin(m_file_id, m_block.offset);
     memset(&m_block, 0, sizeof(m_block));
     ++m_iter;
+
+    // find next block requested by scan and filter rows
+    if (m_rowset.size()) {
+      while (m_iter != m_index->end() && strcmp(*m_rowset.begin(), m_iter.key().row()) > 0)
+        ++m_iter;
+    }
   }
 
   if (m_block.base == 0 && m_iter != m_index->end()) {
@@ -221,7 +230,7 @@ bool CellStoreScannerIntervalBlockIndex<IndexT>::fetch_next_block(bool eob) {
                    "Error inflating cell store block - magic string mismatch");
       }
       catch (Exception &e) {
-        HT_ERROR_OUT <<"Error reading cell store ("
+        HT_ERROR_OUT <<"Error reading cell store (fd=" << m_fd << " file="
                      << m_cellstore->get_filename() <<") : "
                      << e << HT_END;
         HT_ERROR_OUT << "pread(fd=" << m_fd << ", zlen="

@@ -37,6 +37,8 @@ namespace Hyperspace {
    * Structure to hold extended attribute and value
    */
   struct Attribute {
+    Attribute() { }
+  Attribute(const char *n, const void *v, uint32_t vl) : name(n), value(v), value_len(vl) { }
     /** name of extended attribute */
     const char *name;
     /** pointer to attribute value */
@@ -78,7 +80,7 @@ namespace Hyperspace {
     static CommBuf *create_attr_exists_request(uint64_t handle, const std::string &name);
     static CommBuf *create_attr_list_request(uint64_t handle);
     static CommBuf *create_readdir_request(uint64_t handle);
-    static CommBuf *create_readdir_attr_request(uint64_t handle, const std::string &name);
+    static CommBuf *create_readdir_attr_request(uint64_t handle, const std::string &name, bool include_sub_entries);
     static CommBuf *create_readpath_attr_request(uint64_t handle, const std::string &name);
     static CommBuf *create_exists_request(const std::string &name);
 

@@ -37,6 +37,7 @@
 #include "TableCache.h"
 #include "Table.h"
 #include "TableScanner.h"
+#include "TableScannerAsync.h"
 #include "TableSplit.h"
 #include "TableMutator.h"
 #include "NamespaceListing.h"
@@ -221,9 +222,10 @@ namespace Hypertable {
     /**
      * Returns a list of existing tables &  namesspaces
      *
+     * @param include_sub_entries include or not include all sub entries
      * @param tables reference to vector of table names
      */
-    void get_listing(std::vector<NamespaceListing> &listing);
+    void get_listing(bool include_sub_entries, std::vector<NamespaceListing> &listing);
 
     /**
      * Renames a table.

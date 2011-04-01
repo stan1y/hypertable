@@ -43,20 +43,22 @@ namespace Hypertable {
   void TableInfo::load(Hyperspace::SessionPtr &hyperspace) {
     String table_file = m_toplevel_dir + "/tables/" + m_table.id;
     DynamicBuffer valbuf(0);
-    HandleCallbackPtr null_handle_callback;
     uint64_t handle;
 
     HT_ON_SCOPE_EXIT(&Hyperspace::close_handle_ptr, hyperspace, &handle);
-    handle = hyperspace->open(table_file.c_str(), OPEN_FLAG_READ,
-                                  null_handle_callback);
+    handle = hyperspace->open(table_file.c_str(), OPEN_FLAG_READ);
 
     hyperspace->attr_get(handle, "schema", valbuf);
 
     Schema *schema = Schema::new_instance((const char *)valbuf.base,
-                                          valbuf.fill(), true);
+                                          valbuf.fill());
     if (!schema->is_valid())
       HT_THROWF(Error::RANGESERVER_SCHEMA_PARSE_ERROR,
                 "Schema Parse Error: %s", schema->get_error_string());
+    if (schema->need_id_assignment())
+      HT_THROW(Error::RANGESERVER_SCHEMA_PARSE_ERROR,
+               "Schema Parse Error: need ID assignment");
+
     m_schema = schema;
 
     m_table.generation = schema->get_generation();

@@ -90,7 +90,7 @@ namespace Hyperspace {
     class ParserState {
     public:
       ParserState() : open_flag(0), event_mask(0), command(0),
-          last_attr_size(0) { }
+          lock_mode(0), last_attr_size(0), locate_type(0), recursive(false) { }
       String file_name;
       String dir_name;
       String node_name;
@@ -106,6 +106,7 @@ namespace Hyperspace {
       int lock_mode;
       int last_attr_size;
       int locate_type;
+      bool recursive;
     };
 
     struct set_command {
@@ -249,6 +250,13 @@ namespace Hyperspace {
       int locate_type;
     };
 
+    struct set_recursive {
+      set_recursive(ParserState &state) : state(state) { }
+      void operator()(char const *str, char const *end) const {
+       state.recursive = true;
+      }
+      ParserState &state;
+    };
 
     struct Parser : public grammar<Parser> {
       Parser(ParserState &state_) : state(state_) { }
@@ -342,6 +350,7 @@ namespace Hyperspace {
           Token L_EXCLUSIVE          = as_lower_d["exclusive"];
           Token R_MASTER             = as_lower_d["master"];
           Token R_REPLICAS           = as_lower_d["replicas"];
+          Token FLAG_R               = as_lower_d["-r"];
 
           /**
            * Start grammar definition
@@ -458,7 +467,8 @@ namespace Hyperspace {
             = C_READDIR >> node_name[set_dir_name(self.state)];
 
           readdirattr_statement
-            = C_READDIRATTR >> node_name[set_dir_name(self.state)]
+            = C_READDIRATTR >> !(FLAG_R[set_recursive(self.state)])
+            >> node_name[set_dir_name(self.state)]
             >> user_identifier[set_last_attr_name(self.state)]
             ;
 
@@ -485,7 +495,7 @@ namespace Hyperspace {
 
           help_statement
             = (C_HELP | ESC_HELP | QUESTIONMARK )
-              >> any_string[set_help(self.state)];
+            >> any_string[set_help(self.state)];
             ;
 
           locate_statement

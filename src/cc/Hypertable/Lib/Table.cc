@@ -47,7 +47,6 @@ Table::Table(PropertiesPtr &props, ConnectionManagerPtr &conn_manager,
     m_stale(true) {
 
   m_timeout_ms = props->get_i32("Hypertable.Request.Timeout");
-
   initialize();
 
   m_range_locator = new RangeLocator(props, m_conn_manager, m_hyperspace,
@@ -74,13 +73,16 @@ void Table::initialize() {
   String tablefile;
   DynamicBuffer value_buf(0);
   uint64_t handle;
-  HandleCallbackPtr null_handle_callback;
   String errmsg;
   String table_id;
 
   m_toplevel_dir = m_props->get_str("Hypertable.Directory");
   boost::trim_if(m_toplevel_dir, boost::is_any_of("/"));
   m_toplevel_dir = String("/") + m_toplevel_dir;
+
+  m_scanner_queue_size = m_props->get_i32("Hypertable.Scanner.QueueSize");
+  HT_ASSERT(m_scanner_queue_size > 0);
+
 
   // Convert table name to ID string
   if (m_table.id == 0) {
@@ -108,8 +110,7 @@ void Table::initialize() {
    * Open table file
    */
   try {
-    handle = m_hyperspace->open(tablefile, OPEN_FLAG_READ,
-                                null_handle_callback);
+    handle = m_hyperspace->open(tablefile, OPEN_FLAG_READ);
   }
   catch (Exception &e) {
     if (e.code() == Error::HYPERSPACE_BAD_PATHNAME)
@@ -127,12 +128,14 @@ void Table::initialize() {
   m_hyperspace->close(handle);
 
   m_schema = Schema::new_instance((const char *)value_buf.base,
-      strlen((const char *)value_buf.base), true);
+                                  strlen((const char *)value_buf.base));
 
   if (!m_schema->is_valid()) {
     HT_ERRORF("Schema Parse Error: %s", m_schema->get_error_string());
-    HT_THROW_(Error::BAD_SCHEMA);
+    HT_THROW_(Error::SCHEMA_PARSE_ERROR);
   }
+  if (m_schema->need_id_assignment())
+    HT_THROW(Error::SCHEMA_PARSE_ERROR, "Schema needs ID assignment");
 
   m_table.generation = m_schema->get_generation();
   m_stale = false;
@@ -181,11 +184,18 @@ Table::create_mutator(uint32_t timeout_ms, uint32_t flags,
   return new TableMutator(m_props, m_comm, this, m_range_locator, timeout, flags);
 }
 
-
 TableScanner *
 Table::create_scanner(const ScanSpec &scan_spec, uint32_t timeout_ms,
                       bool retry_table_not_found) {
   return new TableScanner(m_comm, this, m_range_locator, scan_spec,
                           timeout_ms ? timeout_ms : m_timeout_ms,
                           retry_table_not_found);
+}
+
+TableScannerAsync *
+Table::create_scanner_async(ResultCallback *cb, const ScanSpec &scan_spec, uint32_t timeout_ms,
+                            bool retry_table_not_found) {
+  return  new TableScannerAsync(m_comm, m_app_queue, this, m_range_locator, scan_spec,
+                                timeout_ms ? timeout_ms : m_timeout_ms, retry_table_not_found,
+                                cb);
 }

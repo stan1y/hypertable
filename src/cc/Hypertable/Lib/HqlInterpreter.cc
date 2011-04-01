@@ -155,7 +155,7 @@ cmd_show_create_table(NamespacePtr &ns, ParserState &state,
   String out_str;
   String schema_str = ns->get_schema_str(state.table_name, true);
   SchemaPtr schema = Schema::new_instance(schema_str.c_str(),
-                                          schema_str.length(), true);
+                                          schema_str.length());
   if (!schema->is_valid())
     HT_THROW(Error::BAD_SCHEMA, schema->get_error_string());
 
@@ -176,7 +176,7 @@ cmd_create_table(NamespacePtr &ns, ParserState &state,
 
   if (!state.clone_table_name.empty()) {
     schema_str = ns->get_schema_str(state.clone_table_name, true);
-    schema = Schema::new_instance(schema_str.c_str(), schema_str.size(), true);
+    schema = Schema::new_instance(schema_str.c_str(), schema_str.size());
     schema_str.clear();
     schema->render(schema_str);
     ns->create_table(state.table_name, schema_str.c_str());
@@ -780,7 +780,7 @@ cmd_get_listing(NamespacePtr &ns, ParserState &state,
   if (!ns)
     HT_THROW(Error::BAD_NAMESPACE, "Null namespace");
   std::vector<NamespaceListing> listing;
-  ns->get_listing(listing);
+  ns->get_listing(false, listing);
   foreach (const NamespaceListing &entry, listing) {
     if (entry.is_namespace && !state.tables_only)
       cb.on_return(entry.name + "\t(namespace)");
@@ -800,8 +800,7 @@ cmd_drop_table(NamespacePtr &ns, ParserState &state,
   cb.on_finish();
 }
 
-void cmd_shutdown(Client *client, HqlInterpreter::Callback &cb) {
-  client->close();
+void cmd_shutdown_master(Client *client, HqlInterpreter::Callback &cb) {
   client->shutdown();
   cb.on_finish();
 }
@@ -875,8 +874,8 @@ void HqlInterpreter::execute(const String &line, Callback &cb) {
                      state, cb);                                   break;
     case COMMAND_CLOSE:
       cmd_close(m_client, cb);                                     break;
-    case COMMAND_SHUTDOWN:
-      cmd_shutdown(m_client, cb);                                  break;
+    case COMMAND_SHUTDOWN_MASTER:
+      cmd_shutdown_master(m_client, cb);                           break;
     case COMMAND_CREATE_NAMESPACE:
       cmd_create_namespace(m_client, m_namespace, state, cb);      break;
     case COMMAND_USE_NAMESPACE:

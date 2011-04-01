@@ -87,7 +87,9 @@ namespace {
     { Error::NAMESPACE_DOES_NOT_EXIST,      "HYPERTABLE namespace does not exist" },
     { Error::BAD_NAMESPACE,                 "HYPERTABLE bad namespace" },
     { Error::NAMESPACE_EXISTS,              "HYPERTABLE namespace exists" },
-
+    { Error::NO_RESPONSE,                   "HYPERTABLE no response" },
+    { Error::NOT_ALLOWED,                   "HYPERTABLE not allowed" },
+    { Error::INDUCED_FAILURE,               "HYPERTABLE induced failure" },
     { Error::CONFIG_BAD_ARGUMENT,         "CONFIG bad argument(s)"},
     { Error::CONFIG_BAD_CFG_FILE,         "CONFIG bad cfg file"},
     { Error::CONFIG_GET_ERROR,            "CONFIG failed to get config value"},
@@ -192,6 +194,8 @@ namespace {
         "Master schema generation mismatch" },
     { Error::MASTER_LOCATION_ALREADY_ASSIGNED,
       "MASTER location already assigned" },
+    { Error::MASTER_LOCATION_INVALID, "MASTER location invalid" },
+    { Error::MASTER_OPERATION_IN_PROGRESS, "MASTER operation in progress" },
 
     { Error::RANGESERVER_GENERATION_MISMATCH,
         "RANGE SERVER generation mismatch" },
@@ -237,7 +241,7 @@ namespace {
     { Error::RANGESERVER_SHORT_CELLSTORE_READ, "RANGE SERVER short cellstore read" },
     { Error::HQL_BAD_LOAD_FILE_FORMAT,         "HQL bad load file format" },
     { Error::METALOG_BAD_RS_HEADER, "METALOG bad range server metalog header" },
-    { Error::METALOG_BAD_M_HEADER,  "METALOG bad master metalog header" },
+    { Error::METALOG_BAD_HEADER,  "METALOG bad metalog header" },
     { Error::METALOG_ENTRY_TRUNCATED,   "METALOG entry truncated" },
     { Error::METALOG_CHECKSUM_MISMATCH, "METALOG checksum mismatch" },
     { Error::METALOG_ENTRY_BAD_TYPE, "METALOG bad entry type" },
@@ -249,6 +253,7 @@ namespace {
     { Error::THRIFTBROKER_BAD_SCANNER_ID, "THRIFT BROKER bad scanner id" },
     { Error::THRIFTBROKER_BAD_MUTATOR_ID, "THRIFT BROKER bad mutator id" },
     { Error::THRIFTBROKER_BAD_NAMESPACE_ID , "THRIFT BROKER bad namespace id" },
+    { Error::THRIFTBROKER_BAD_FUTURE_ID ,    "THRIFT BROKER bad future id" },
     { 0, 0 }
   };
 

@@ -131,9 +131,6 @@ bool Client::exists_namespace(const String &name, Namespace *base) {
 
   String namespace_file = m_toplevel_dir + "/tables/" + id;
 
-  DynamicBuffer value_buf(0);
-  Hyperspace::HandleCallbackPtr null_handle_callback;
-
   try {
     return m_hyperspace->exists(namespace_file);
   }
@@ -164,7 +161,7 @@ Hyperspace::SessionPtr& Client::get_hyperspace_session()
 }
 
 void Client::close() {
-  m_master_client->close();
+  HT_WARN("close() is no longer supported");
 }
 
 void Client::shutdown() {
@@ -220,7 +217,7 @@ void Client::initialize() {
   m_master_client = new MasterClient(m_conn_manager, m_hyperspace, m_toplevel_dir,
                                      m_timeout_ms, m_app_queue);
 
-  m_master_client->initiate_connection(0);
+  m_master_client->initiate_connection();
 
   if (!m_master_client->wait_for_connection(timer))
     HT_THROW(Error::REQUEST_TIMEOUT, "Waiting for Master connection");

@@ -28,18 +28,18 @@ CREATE TABLE foo (
 
 DROP TABLE foo;
 DROP NAMESPACE "/test";
-Error: Master 'drop namespace' error, name=test - HYPERSPACE directory not empty
+Error: MasterClient operation drop_namespace('test', if_exists=false) failed - HYPERSPACE directory not empty
 USE "/test";
 DROP NAMESPACE "subtest";
 RENAME TABLE foo TO foo_renamed;
 GET LISTING;
 foo_renamed
 DROP TABLE foo;
-Error: Master 'drop table' error - HYPERTABLE table does not exist
+Error: MasterClient operation drop_table('test/foo', if_exists=false) failed - HYPERTABLE table does not exist
 DROP TABLE foo_renamed;
 DROP NAMESPACE "/test";
 CREATE TABLE foo('test');
-Error: Master 'create table' error, tablename=test/foo - HYPERTABLE namespace does not exist
+Error: MasterClient operation create_table('test/foo') failed - HYPERTABLE namespace does not exist
 CREATE NAMESPACE "/test";
 USE "/test";
 DROP TABLE IF EXISTS hypertable;
@@ -90,7 +90,7 @@ DROP TABLE IF EXISTS Pages_clone;
 CREATE TABLE Pages_clone LIKE Pages;
 SHOW CREATE TABLE Pages_clone;
 
-CREATE TABLE Pages_clone (
+CREATE TABLE 'Pages_clone' (
   'refer_url',
   'http_code',
   timestamp,
@@ -265,6 +265,8 @@ a	b	n
 az	b	n
 b	b	n
 bz	b	n
+SELECT * FROM test WHERE (ROW =^'a' or 'd' < ROW < 'b' or ROW =^ 'b');
+Error: start_row (d) > end_row (b) - HYPERTABLE bad scan specification
 DROP TABLE IF EXISTS test;
 CREATE TABLE test ( tag );
 INSERT INTO test VALUES("how", "tag:A", "n");
@@ -2222,7 +2224,7 @@ ACCESS GROUP bar_group ( bar )
 
 show create table render_bug;
 
-CREATE TABLE render_bug (
+CREATE TABLE 'render_bug' (
   foo,
   bar,
   ACCESS GROUP 'foo_group' (foo),
@@ -2521,3 +2523,98 @@ SELECT CELLS col1:/^w/, col2:/^[em].*/ from RegexpTest WHERE VALUE REGEXP "i.*a"
 http://yahoo.com	col2:mailto	bodhi2sattva17
 martingale_123	col2:ergodic1	Consignificative65Era
 moss berry	col1:w1234	giants
+
+# test empty qualifier filtering
+INSERT INTO RegexpTest VALUES('http://yahoo.com', 'col2', 'swiss');
+SELECT col1, col2 from RegexpTest;
+http://www.dmv.ca.gov	col1:fish	salmon tuna
+http://yahoo.com	col2	swiss
+http://yahoo.com	col2:bird	pheasant
+http://yahoo.com	col2:mailto	bodhi2sattva17
+martingale_123	col2:ergodic1	Consignificative65Era
+moss berry	col1:w1234	giants
+moss berry	col1:word	panini
+orange marmalade	col1:w1234	clone
+suitability	col1	centrist
+SELECT col1:"", col2:"" from RegexpTest;
+http://yahoo.com	col2	swiss
+suitability	col1	centrist
+SELECT CELLS col1:"", col2:"" from RegexpTest;
+http://yahoo.com	col2	swiss
+suitability	col1	centrist
+SELECT col1:"" from RegexpTest WHERE ROW = 'suitability';
+suitability	col1	centrist
+SELECT CELLS col1:"" from RegexpTest WHERE ROW = 'suitability';
+suitability	col1	centrist
+SELECT col2:"" from RegexpTest WHERE ROW = 'http://yahoo.com';
+http://yahoo.com	col2	swiss
+SELECT CELLS col2:"" from RegexpTest WHERE ROW = 'http://yahoo.com';
+http://yahoo.com	col2	swiss
+
+# test scan and filter rows
+SELECT col1, col2 from RegexpTest SCAN_AND_FILTER_ROWS;
+http://www.dmv.ca.gov	col1:fish	salmon tuna
+http://yahoo.com	col2	swiss
+http://yahoo.com	col2:bird	pheasant
+http://yahoo.com	col2:mailto	bodhi2sattva17
+martingale_123	col2:ergodic1	Consignificative65Era
+moss berry	col1:w1234	giants
+moss berry	col1:word	panini
+orange marmalade	col1:w1234	clone
+suitability	col1	centrist
+SELECT col1:"", col2:"" from RegexpTest SCAN_AND_FILTER_ROWS;
+http://yahoo.com	col2	swiss
+suitability	col1	centrist
+SELECT CELLS col1:"", col2:"" from RegexpTest SCAN_AND_FILTER_ROWS;
+http://yahoo.com	col2	swiss
+suitability	col1	centrist
+SELECT col1:"" from RegexpTest WHERE ROW = 'suitability' SCAN_AND_FILTER_ROWS;
+suitability	col1	centrist
+SELECT * from RegexpTest WHERE (ROW = 'suitability' OR ROW = 'moss berry') SCAN_AND_FILTER_ROWS;
+moss berry	col1:w1234	giants
+moss berry	col1:word	panini
+suitability	col1	centrist
+SELECT * from RegexpTest WHERE (ROW = 'suitability' OR ROW = 'moss berry' OR ROW = 'orange marmalade') SCAN_AND_FILTER_ROWS;
+moss berry	col1:w1234	giants
+moss berry	col1:word	panini
+orange marmalade	col1:w1234	clone
+suitability	col1	centrist
+SELECT * from RegexpTest WHERE (ROW = 'suitability' OR ROW = 'moss berry' OR ROW = 'orange marmalade' OR ROW = 'http://yahoo.com') SCAN_AND_FILTER_ROWS;
+http://yahoo.com	col2	swiss
+http://yahoo.com	col2:bird	pheasant
+http://yahoo.com	col2:mailto	bodhi2sattva17
+moss berry	col1:w1234	giants
+moss berry	col1:word	panini
+orange marmalade	col1:w1234	clone
+suitability	col1	centrist
+SELECT * from RegexpTest WHERE (ROW = 'suitability' OR ROW = 'moss berry' OR ROW = 'orange marmalade' OR ROW = 'http://yahoo.com' OR ROW = 'http://www.dmv.ca.gov' OR ROW = 'martingale_123') SCAN_AND_FILTER_ROWS;
+http://www.dmv.ca.gov	col1:fish	salmon tuna
+http://yahoo.com	col2	swiss
+http://yahoo.com	col2:bird	pheasant
+http://yahoo.com	col2:mailto	bodhi2sattva17
+martingale_123	col2:ergodic1	Consignificative65Era
+moss berry	col1:w1234	giants
+moss berry	col1:word	panini
+orange marmalade	col1:w1234	clone
+suitability	col1	centrist
+SELECT * from RegexpTest WHERE ROW REGEXP "http://.*" AND (ROW = 'http://www.dmv.ca.gov' OR ROW = 'moss berry' OR ROW = 'orange marmalade' OR ROW = 'http://yahoo.com') SCAN_AND_FILTER_ROWS;
+http://www.dmv.ca.gov	col1:fish	salmon tuna
+http://yahoo.com	col2	swiss
+http://yahoo.com	col2:bird	pheasant
+http://yahoo.com	col2:mailto	bodhi2sattva17
+SELECT CELLS * from RegexpTest WHERE (ROW = 'suitability' OR ROW = 'moss berry' OR ROW = 'orange marmalade') AND VALUE REGEXP "^c.*" SCAN_AND_FILTER_ROWS;
+orange marmalade	col1:w1234	clone
+suitability	col1	centrist
+SELECT CELLS col1:/^w[^a-zA-Z]*$/ from RegexpTest WHERE (ROW = 'suitability' OR ROW = 'moss berry' OR ROW = 'orange marmalade' OR ROW = 'http://yahoo.com') SCAN_AND_FILTER_ROWS;
+moss berry	col1:w1234	giants
+orange marmalade	col1:w1234	clone
+SELECT * from RegexpTest WHERE (ROW = 'suitability' OR ROW = 'Suitability' OR ROW = 'moss berry' OR ROW = 'moss abc') SCAN_AND_FILTER_ROWS;
+moss berry	col1:w1234	giants
+moss berry	col1:word	panini
+suitability	col1	centrist
+SELECT col1:"", col2:"" from RegexpTest WHERE (ROW = 'suitability' OR ROW = 'http://yahoo.com') SCAN_AND_FILTER_ROWS;
+http://yahoo.com	col2	swiss
+suitability	col1	centrist
+SELECT CELLS col1:"" from RegexpTest WHERE (ROW = 'suitability' OR ROW = 'Suitability' OR ROW = 'suitability') SCAN_AND_FILTER_ROWS;
+suitability	col1	centrist
+SELECT * from RegexpTest WHERE (ROW = 'Suitability' OR ROW = 'moss Berry' OR ROW = 'Orange marmalade' OR ROW = 'http://yahoo.com/mail') SCAN_AND_FILTER_ROWS;
