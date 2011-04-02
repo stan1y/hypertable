@@ -3,8 +3,8 @@
 from setuptools import setup, Extension
 
 setup(name = "ht",
-        version = "0.9.4.3",
-        description = "Hypertable 0.9.4 Python Binding",
+        version = "0.9.5.0",
+        description = "Hypertable 0.9.5.0 Python Binding",
         author = "Stanislav Yudin",
         author_email = "stanislav.yudin@k7cloud.com",
 		url = "http://www.k7cloud.com",
