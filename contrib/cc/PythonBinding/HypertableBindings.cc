@@ -200,7 +200,7 @@ void namespace_rename_table(NamespacePtr n, const string& old_name, const string
 boost::python::list namespace_get_tables(NamespacePtr n)
 {
 	vector<NamespaceListing> list;
-	n->get_listing(list);
+	n->get_listing(false, list);
 
 	boost::python::list tables;
 	BOOST_FOREACH(const NamespaceListing& nl, list )
@@ -214,7 +214,7 @@ boost::python::list namespace_get_tables(NamespacePtr n)
 boost::python::list namespace_get_namespaces(NamespacePtr n)
 {
 	vector<NamespaceListing> list;
-	n->get_listing(list);
+	n->get_listing(true, list);
 
 	boost::python::list namespaces;
 	BOOST_FOREACH(const NamespaceListing& nl, list )
