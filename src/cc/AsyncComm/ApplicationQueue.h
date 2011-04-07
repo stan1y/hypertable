@@ -24,6 +24,7 @@
 
 #include <cassert>
 #include <list>
+#include <map>
 #include <vector>
 
 #include <boost/thread/condition.hpp>
@@ -68,13 +69,14 @@ namespace Hypertable {
 
     class ApplicationQueueState {
     public:
-      ApplicationQueueState() : shutdown(false), paused(false) { return; }
+      ApplicationQueueState() : threads_available(0), shutdown(false), paused(false) { return; }
       WorkQueue           queue;
       WorkQueue           urgent_queue;
       UsageRecMap         usage_map;
       Mutex               queue_mutex;
       Mutex               usage_mutex;
       boost::condition    cond;
+      size_t              threads_available;
       bool                shutdown;
       bool                paused;
     };
@@ -82,7 +84,7 @@ namespace Hypertable {
     class Worker {
 
     public:
-      Worker(ApplicationQueueState &qstate) : m_state(qstate) { return; }
+      Worker(ApplicationQueueState &qstate, bool one_shot=false) : m_state(qstate), m_one_shot(one_shot) { return; }
 
       void operator()() {
         WorkRec *rec = 0;
@@ -90,13 +92,16 @@ namespace Hypertable {
 
         while (true) {
 
-          {  // !!! maybe ditch this block specifier
+          {
             ScopedLock lock(m_state.queue_mutex);
 
+            m_state.threads_available++;
             while ((m_state.paused || m_state.queue.empty()) &&
                    m_state.urgent_queue.empty()) {
-              if (m_state.shutdown)
+              if (m_state.shutdown) {
+		m_state.threads_available--;
                 return;
+	      }
               m_state.cond.wait(lock);
             }
 
@@ -141,13 +146,19 @@ namespace Hypertable {
                 }
               }
             }
-            if (rec == 0) {
-              if (m_state.shutdown)
+            if (rec == 0 && !m_one_shot) {
+              if (m_state.shutdown) {
+		m_state.threads_available--;
                 return;
+	      }
               m_state.cond.wait(lock);
-              if (m_state.shutdown)
+              if (m_state.shutdown) {
+		m_state.threads_available--;
                 return;
+	      }
             }
+
+	    m_state.threads_available--;
           }
 
           if (rec) {
@@ -162,7 +173,11 @@ namespace Hypertable {
               }
             }
             delete rec;
+            if (m_one_shot)
+              return;
           }
+          else if (m_one_shot)
+            return;
         }
 
         HT_INFO("thread exit");
@@ -170,13 +185,15 @@ namespace Hypertable {
 
     private:
       ApplicationQueueState &m_state;
+      bool m_one_shot;
     };
 
     Mutex                  m_mutex;
     ApplicationQueueState  m_state;
     ThreadGroup            m_threads;
-    bool joined;
     std::vector<Thread::id>     m_thread_ids;
+    bool joined;
+    bool m_dynamic_threads;
 
   public:
 
@@ -191,7 +208,8 @@ namespace Hypertable {
      *
      * @param worker_count number of worker threads to create
      */
-    ApplicationQueue(int worker_count) : joined(false) {
+    ApplicationQueue(int worker_count, bool dynamic_threads=true) 
+      : joined(false), m_dynamic_threads(dynamic_threads) {
       Worker Worker(m_state);
       assert (worker_count > 0);
       for (int i=0; i<worker_count; ++i) {
@@ -280,8 +298,13 @@ namespace Hypertable {
 
       {
         ScopedLock lock(m_state.queue_mutex);
-        if (app_handler->is_urgent())
+        if (app_handler->is_urgent()) {
           m_state.urgent_queue.push_back(rec);
+          if (m_dynamic_threads && m_state.threads_available == 0) {
+            Worker worker(m_state, true);
+            Thread t(worker);
+          }
+        }
         else
           m_state.queue.push_back(rec);
         m_state.cond.notify_one();

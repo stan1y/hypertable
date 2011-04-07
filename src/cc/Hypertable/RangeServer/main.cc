@@ -80,9 +80,9 @@ int main(int argc, char **argv) {
     HyperspaceSessionHandler hs_handler;
     Global::hyperspace = new Hyperspace::Session(comm, properties);
     Global::hyperspace->add_callback(&hs_handler);
-    int timeout = get_i32("Hyperspace.Timeout");
+    int hyperspace_timeout = get_i32("Hyperspace.Timeout");
 
-    if (!Global::hyperspace->wait_for_connection(timeout)) {
+    if (!Global::hyperspace->wait_for_connection(hyperspace_timeout)) {
       HT_ERROR("Unable to connect to hyperspace, exiting...");
       exit(1);
     }
