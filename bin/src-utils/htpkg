@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-build=Release
-srcdir=$HOME/Source/hypertable
-phpdir=$HOME/Source/thrift/lib/php/src
+srcdir=$HOME/src/hypertable
 
 usage_exit() {
   echo "Usage: htpkg [Options] <generator>..."
