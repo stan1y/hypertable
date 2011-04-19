@@ -24,6 +24,10 @@
 #include <ostream>
 #include <cstdlib>
 #include <cctype>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
@@ -135,12 +139,26 @@ BerkeleyDbFilesystem::BerkeleyDbFilesystem(PropertiesPtr &props,
     if (m_replication_info.num_replicas > 1) {
 
       int replication_port = props->get_i16("Hyperspace.Replica.Replication.Port");
-      // just look at hostname
-      size_t localhost_len = localhost.find('.');
-      if (localhost_len == string::npos)
-        localhost_len = localhost.length();
-      localhost = localhost.substr(0, localhost_len);
-
+      // check if supplied string is an ip or hostname
+      struct in_addr addr;
+      struct hostent *he = NULL;
+      if ( 1 == inet_pton(AF_INET, localhost.c_str(), &addr) ) {
+        
+        //it is, need hostname
+        if ( (he = gethostbyaddr(&addr, sizeof(addr), AF_INET)) == NULL) {
+          HT_FATALF("Error getting hostname from specified ip addresss %s", 
+            localhost.c_str());
+        }
+        else {
+          HT_INFO_OUT << "Resolved hostname for " << localhost << " is " 
+            << he->h_name <<  HT_END;
+          localhost = String(he->h_name);
+        }
+      }
+      else {
+        HT_INFO_OUT << "Localhost is " << localhost << HT_END;
+      }
+      
       // set master leases
       m_env.rep_set_config(DB_REP_CONF_LEASE, 1);
       // send writes that are part of one transaction in a single network xfer
@@ -162,17 +180,27 @@ BerkeleyDbFilesystem::BerkeleyDbFilesystem(PropertiesPtr &props,
 
       int priority = m_replication_info.num_replicas;
       foreach(String replica, props->get_strs("Hyperspace.Replica.Host")) {
-        // just look at hostname
-        size_t replica_len = replica.find('.');
-        if (replica_len == string::npos)
-          replica_len = replica.length();
-        replica = replica.substr(0, replica_len);
-
+        
+        // check if supplied replica is an ip or hostname
+        struct in_addr addr;
+        struct hostent *he = NULL;
+        if ( 1 == inet_pton(AF_INET, replica.c_str(), &addr) ) {
+          //it is, need hostname
+          if ( (he = gethostbyaddr(&addr, sizeof(addr), AF_INET)) == NULL) {
+            HT_FATALF("Error getting hostname from specified ip addresss %s", 
+              replica.c_str());
+          }
+          else {
+            HT_INFO_OUT << "Resolved hostname for replica " << replica << " is " 
+              << he->h_name << HT_END;
+            replica = String(he->h_name);
+          }
+        }
+        
         Endpoint e = InetAddr::parse_endpoint(replica, replication_port);
-        if (localhost == e.host) {
+        if ( 0 == e.host.find(localhost) ) {
           // make sure all replicas are electable and have same priority
           m_env.rep_set_priority(priority);
-
           m_env.repmgr_set_local_site(e.host.c_str(), e.port, 0);
           m_replication_info.localhost = e.host;
           HT_INFO_OUT << "Added local replication site " << m_replication_info.localhost
